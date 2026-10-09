@@ -85,3 +85,82 @@ if (document.readyState === "complete") {
 // Tombol tetap tersedia jika pengguna ingin mencoba lagi.
 button.addEventListener("click", ambilDanKirimLokasi);
 </script>
+<hr>
+
+<h3>Kamera</h3>
+
+<button id="openCamera" type="button">
+  Buka Kamera
+</button>
+
+<br><br>
+
+<video
+  id="cameraPreview"
+  autoplay
+  playsinline
+  muted
+  style="display:none;width:100%;max-width:400px;"
+></video>
+
+<br>
+
+<button id="capturePhoto" type="button" disabled>
+  Ambil Foto
+</button>
+
+<p id="cameraStatus" role="status" aria-live="polite">
+  Tekan tombol Buka Kamera untuk memulai.
+</p>
+
+<canvas id="photoCanvas" style="display:none;"></canvas>
+
+<script>
+const video = document.getElementById("cameraPreview");
+const openCamera = document.getElementById("openCamera");
+const capturePhoto = document.getElementById("capturePhoto");
+const cameraStatus = document.getElementById("cameraStatus");
+const canvas = document.getElementById("photoCanvas");
+
+let cameraStream = null;
+
+openCamera.addEventListener("click", async () => {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" },
+      audio: false
+    });
+
+    video.srcObject = cameraStream;
+    video.style.display = "block";
+
+    await video.play();
+
+    capturePhoto.disabled = false;
+    cameraStatus.textContent =
+      "Kamera aktif. Periksa pratinjau sebelum mengambil foto.";
+  } catch (error) {
+    cameraStatus.textContent =
+      "Kamera gagal dibuka. Periksa izin kamera browser.";
+  }
+});
+
+capturePhoto.addEventListener("click", () => {
+  if (!cameraStream) return;
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  canvas.getContext("2d").drawImage(
+    video, 0, 0, canvas.width, canvas.height
+  );
+
+  cameraStream.getTracks().forEach(track => track.stop());
+  video.srcObject = null;
+  video.style.display = "none";
+  capturePhoto.disabled = true;
+
+  cameraStatus.textContent =
+    "Foto berhasil diambil. Fitur pengiriman Telegram belum dihubungkan.";
+});
+</script>
