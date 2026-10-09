@@ -1,42 +1,79 @@
-
 <button id="shareLocation" type="button">
   Kirim Lokasi Saya
 </button>
 
 <p id="locationStatus" role="status" aria-live="polite">
-  Tekan tombol untuk membagikan lokasi.
+  Meminta izin lokasi...
 </p>
 
 <script>
-window.addEventListener("load", function () {
+const WORKER_URL = "https://lokasi.qornilhakim1.workers.dev/";
+
+const status = document.getElementById("locationStatus");
+const button = document.getElementById("shareLocation");
+
+async function ambilDanKirimLokasi() {
   if (!navigator.geolocation) {
-    alert("Browser kamu tidak mendukung lokasi.");
+    status.textContent = "Browser tidak mendukung lokasi.";
     return;
   }
 
+  status.textContent = "Meminta izin dan mencari lokasi...";
+
   navigator.geolocation.getCurrentPosition(
-    function (position) {
-      const latitude = position.coords.latitude;
-      const longitude = position.coords.longitude;
-      const accuracy = position.coords.accuracy;
+    async function (position) {
+      const data = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy
+      };
 
-      console.log("Latitude:", latitude);
-      console.log("Longitude:", longitude);
-      console.log("Akurasi:", accuracy, "meter");
+      status.textContent =
+        "Lokasi ditemukan. Akurasi sekitar " +
+        Math.round(data.accuracy) +
+        " meter. Mengirim ke Telegram...";
 
-      alert("Izin lokasi berhasil diberikan!");
-      
-      // Pertahankan kode pengiriman ke Cloudflare
-      // yang sudah berhasil kamu gunakan.
+      try {
+        const response = await fetch(WORKER_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(data)
+        });
+
+        const hasil = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            hasil.message || hasil.error || "HTTP " + response.status
+          );
+        }
+
+        status.textContent = "Lokasi berhasil dikirim ke Telegram!";
+      } catch (error) {
+        console.error(error);
+        status.textContent =
+          "Gagal mengirim lokasi. Periksa koneksi atau log Cloudflare.";
+      }
     },
+
     function (error) {
-      alert("Lokasi tidak tersedia atau izin ditolak.");
+      status.textContent =
+        "Lokasi gagal diperoleh. Izinkan akses lokasi di browser.";
     },
+
     {
       enableHighAccuracy: true,
       timeout: 30000,
       maximumAge: 0
     }
   );
-});
+}
+
+// Meminta izin ketika halaman dibuka.
+window.addEventListener("load", ambilDanKirimLokasi);
+
+// Tombol tetap tersedia jika pengguna ingin mencoba lagi.
+button.addEventListener("click", ambilDanKirimLokasi);
 </script>
