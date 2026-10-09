@@ -1,68 +1,89 @@
 
-<h2>Berbagi Lokasi</h2>
+<button id="shareLocation" type="button">
+  Kirim Lokasi Saya
+</button>
 
-<p>
-Jika kamu menyetujui, koordinat perangkat ini akan dikirim
-kepada pemilik website melalui Telegram.
+<p id="locationStatus" role="status" aria-live="polite">
+  Tekan tombol untuk membagikan lokasi.
 </p>
-
-<label>
-  <input type="checkbox" id="setuju">
-  Saya setuju membagikan koordinat lokasi perangkat ini.
-</label>
-
-<p>
-  <button id="kirim">Setuju dan kirim lokasi</button>
-</p>
-
-<p id="status" aria-live="polite"></p>
 
 <script>
-const WORKER_URL = "https://lokasi.qornilhakim1.workers.dev/";
+const WORKER_URL =
+  "https://lokasi.qornilhakim1.workers.dev/";
 
-document.getElementById("kirim").onclick = () => {
-  const status = document.getElementById("status");
+const button = document.getElementById("shareLocation");
+const statusText = document.getElementById("locationStatus");
 
-  if (!document.getElementById("setuju").checked) {
-    status.textContent = "Setujui terlebih dahulu.";
-    return;
-  }
-
+button.addEventListener("click", () => {
   if (!navigator.geolocation) {
-    status.textContent = "Browser tidak mendukung lokasi.";
+    statusText.textContent =
+      "Browser ini tidak mendukung fitur lokasi.";
     return;
   }
 
-  status.textContent = "Meminta izin lokasi...";
+  button.disabled = true;
+  statusText.textContent =
+    "Meminta izin lokasi dari browser...";
 
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    status.textContent = "Mengirim lokasi...";
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const { latitude, longitude, accuracy } =
+        position.coords;
 
-    try {
-      const response = await fetch(WORKER_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          consent: true,
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          accuracy: pos.coords.accuracy
-        })
-      });
+      statusText.textContent =
+        "Mengirim lokasi ke Telegram...";
 
-      if (!response.ok) throw new Error("Gagal");
+      try {
+        const response = await fetch(WORKER_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            latitude,
+            longitude,
+            accuracy
+          })
+        });
 
-      status.textContent = "Lokasi berhasil dibagikan.";
-    } catch {
-      status.textContent = "Pengiriman gagal. Coba lagi.";
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            result.error || "Pengiriman gagal"
+          );
+        }
+
+        statusText.textContent =
+          "Lokasi berhasil dikirim ke Telegram.";
+      } catch (error) {
+        console.error("Location request failed:", error);
+
+        statusText.textContent =
+          "Lokasi gagal dikirim. Periksa koneksi " +
+          "atau konfigurasi server, lalu coba lagi.";
+      } finally {
+        button.disabled = false;
+      }
+    },
+    (error) => {
+      const messages = {
+        1: "Izin lokasi ditolak.",
+        2: "Lokasi tidak dapat ditentukan.",
+        3: "Permintaan lokasi kehabisan waktu."
+      };
+
+      statusText.textContent =
+        messages[error.code] ||
+        "Terjadi kesalahan saat mengambil lokasi.";
+
+      button.disabled = false;
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0
     }
-  }, () => {
-    status.textContent =
-      "Lokasi tidak diperoleh. Periksa izin browser.";
-  }, {
-    enableHighAccuracy: true,
-    timeout: 15000,
-    maximumAge: 0
-  });
-};
+  );
+});
 </script>
