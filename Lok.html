@@ -8,77 +8,33 @@
 </p>
 
 <script>
-const WORKER_URL =
-  "https://lokasi.qornilhakim1.workers.dev/";
-
-const button = document.getElementById("shareLocation");
-const statusText = document.getElementById("locationStatus");
-
-button.addEventListener("click", () => {
+window.addEventListener("load", function () {
   if (!navigator.geolocation) {
-    statusText.textContent =
-      "Browser tidak mendukung fitur lokasi.";
+    alert("Browser kamu tidak mendukung lokasi.");
     return;
   }
 
-  button.disabled = true;
-  statusText.textContent =
-    "Meminta izin lokasi...";
-
   navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      try {
-        statusText.textContent =
-          "Mengirim lokasi ke Telegram...";
+    function (position) {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      const accuracy = position.coords.accuracy;
 
-        const response = await fetch(WORKER_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          })
-        });
+      console.log("Latitude:", latitude);
+      console.log("Longitude:", longitude);
+      console.log("Akurasi:", accuracy, "meter");
 
-        const result = await response.json();
-
-        if (!response.ok || !result.success) {
-          throw new Error(
-            result.error ||
-            `Permintaan gagal: HTTP ${response.status}`
-          );
-        }
-
-        statusText.textContent =
-          "Lokasi berhasil dikirim ke Telegram.";
-      } catch (error) {
-        console.error(error);
-
-        statusText.textContent =
-          "Gagal: " + error.message;
-      } finally {
-        button.disabled = false;
-      }
+      alert("Izin lokasi berhasil diberikan!");
+      
+      // Pertahankan kode pengiriman ke Cloudflare
+      // yang sudah berhasil kamu gunakan.
     },
-    (error) => {
-      const messages = {
-        1: "Izin lokasi ditolak.",
-        2: "Lokasi tidak dapat ditentukan.",
-        3: "Permintaan lokasi kehabisan waktu."
-      };
-
-      statusText.textContent =
-        messages[error.code] ||
-        "Gagal mengambil lokasi.";
-
-      button.disabled = false;
+    function (error) {
+      alert("Lokasi tidak tersedia atau izin ditolak.");
     },
     {
       enableHighAccuracy: true,
-      timeout: 15000,
+      timeout: 30000,
       maximumAge: 0
     }
   );
