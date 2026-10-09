@@ -17,32 +17,29 @@ const statusText = document.getElementById("locationStatus");
 button.addEventListener("click", () => {
   if (!navigator.geolocation) {
     statusText.textContent =
-      "Browser ini tidak mendukung fitur lokasi.";
+      "Browser tidak mendukung fitur lokasi.";
     return;
   }
 
   button.disabled = true;
   statusText.textContent =
-    "Meminta izin lokasi dari browser...";
+    "Meminta izin lokasi...";
 
   navigator.geolocation.getCurrentPosition(
     async (position) => {
-      const { latitude, longitude, accuracy } =
-        position.coords;
-
-      statusText.textContent =
-        "Mengirim lokasi ke Telegram...";
-
       try {
+        statusText.textContent =
+          "Mengirim lokasi ke Telegram...";
+
         const response = await fetch(WORKER_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            latitude,
-            longitude,
-            accuracy
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
           })
         });
 
@@ -50,18 +47,18 @@ button.addEventListener("click", () => {
 
         if (!response.ok || !result.success) {
           throw new Error(
-            result.error || "Pengiriman gagal"
+            result.error ||
+            `Permintaan gagal: HTTP ${response.status}`
           );
         }
 
         statusText.textContent =
           "Lokasi berhasil dikirim ke Telegram.";
       } catch (error) {
-        console.error("Location request failed:", error);
+        console.error(error);
 
         statusText.textContent =
-          "Lokasi gagal dikirim. Periksa koneksi " +
-          "atau konfigurasi server, lalu coba lagi.";
+          "Gagal: " + error.message;
       } finally {
         button.disabled = false;
       }
@@ -75,7 +72,7 @@ button.addEventListener("click", () => {
 
       statusText.textContent =
         messages[error.code] ||
-        "Terjadi kesalahan saat mengambil lokasi.";
+        "Gagal mengambil lokasi.";
 
       button.disabled = false;
     },
