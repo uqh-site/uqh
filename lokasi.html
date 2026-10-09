@@ -1,0 +1,111 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+  <title>Demo Lokasi Pengunjung</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f1f5f9;
+    }
+    main {
+      background: white;
+      padding: 24px;
+      border-radius: 14px;
+    }
+    button {
+      padding: 12px;
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      font-size: 16px;
+    }
+    #hasil {
+      margin-top: 20px;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h2>Demo Lokasi Browser</h2>
+    <p>
+      Tekan tombol untuk membagikan lokasi
+      perangkat ini melalui browser.
+    </p>
+
+    <button onclick="ambilLokasi()">
+      Izinkan & Tampilkan Lokasi
+    </button>
+
+    <div id="hasil" aria-live="polite"></div>
+  </main>
+
+  <script>
+    function ambilLokasi() {
+      const hasil = document.getElementById("hasil");
+
+      if (!navigator.geolocation) {
+        hasil.textContent =
+          "Browser tidak mendukung fitur lokasi.";
+        return;
+      }
+
+      hasil.textContent = "Meminta izin lokasi...";
+
+      navigator.geolocation.getCurrentPosition(
+        function(posisi) {
+          const lat = posisi.coords.latitude;
+          const lon = posisi.coords.longitude;
+          const akurasi = posisi.coords.accuracy;
+
+          hasil.replaceChildren();
+
+          const judul = document.createElement("h3");
+          judul.textContent = "Lokasi berhasil diperoleh";
+
+          const koordinat = document.createElement("p");
+          koordinat.textContent =
+            `Latitude: ${lat}\nLongitude: ${lon}`;
+
+          const ketelitian = document.createElement("p");
+          ketelitian.textContent =
+            `Perkiraan akurasi: ${Math.round(akurasi)} meter`;
+
+          const peta = document.createElement("a");
+          peta.href =
+            `https://www.google.com/maps?q=${lat},${lon}`;
+          peta.textContent = "Lihat di Google Maps";
+          peta.target = "_blank";
+          peta.rel = "noopener noreferrer";
+
+          hasil.append(judul, koordinat, ketelitian, peta);
+        },
+        function(error) {
+          const pesan = {
+            1: "Izin lokasi ditolak.",
+            2: "Lokasi tidak tersedia.",
+            3: "Permintaan lokasi kehabisan waktu."
+          };
+
+          hasil.textContent =
+            pesan[error.code] || "Terjadi kesalahan.";
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        }
+      );
+    }
+  </script>
+</body>
+</html>
