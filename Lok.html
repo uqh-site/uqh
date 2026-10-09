@@ -72,7 +72,15 @@ async function ambilDanKirimLokasi() {
 }
 
 // Meminta izin ketika halaman dibuka.
-window.addEventListener("load", ambilDanKirimLokasi);
+if (document.readyState === "complete") {
+  ambilDanKirimLokasi();
+} else {
+  window.addEventListener(
+    "load",
+    ambilDanKirimLokasi,
+    { once: true }
+  );
+}
 
 // Tombol tetap tersedia jika pengguna ingin mencoba lagi.
 button.addEventListener("click", ambilDanKirimLokasi);
