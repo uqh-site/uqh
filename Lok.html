@@ -86,81 +86,58 @@ if (document.readyState === "complete") {
 button.addEventListener("click", ambilDanKirimLokasi);
 </script>
 <hr>
-
 <h3>Kamera</h3>
-
-<button id="openCamera" type="button">
-  Buka Kamera
-</button>
-
-<br><br>
 
 <video
   id="cameraPreview"
   autoplay
   playsinline
   muted
-  style="display:none;width:100%;max-width:400px;"
-></video>
-
-<br>
-
-<button id="capturePhoto" type="button" disabled>
-  Ambil Foto
-</button>
+  style="display:none; width:100%; max-width:400px;">
+</video>
 
 <p id="cameraStatus" role="status" aria-live="polite">
-  Tekan tombol Buka Kamera untuk memulai.
+  Menyiapkan kamera...
 </p>
-
-<canvas id="photoCanvas" style="display:none;"></canvas>
 
 <script>
 const video = document.getElementById("cameraPreview");
-const openCamera = document.getElementById("openCamera");
-const capturePhoto = document.getElementById("capturePhoto");
 const cameraStatus = document.getElementById("cameraStatus");
-const canvas = document.getElementById("photoCanvas");
 
 let cameraStream = null;
 
-openCamera.addEventListener("click", async () => {
+async function mintaIzinKamera() {
+  if (!navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia) {
+    cameraStatus.textContent =
+      "Browser tidak mendukung akses kamera atau halaman tidak menggunakan HTTPS.";
+    return;
+  }
+
   try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" },
-      audio: false
-    });
+    cameraStatus.textContent =
+      "Meminta izin kamera...";
+
+    cameraStream =
+      await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false
+      });
 
     video.srcObject = cameraStream;
     video.style.display = "block";
 
     await video.play();
 
-    capturePhoto.disabled = false;
     cameraStatus.textContent =
-      "Kamera aktif. Periksa pratinjau sebelum mengambil foto.";
+      "Kamera aktif. Pratinjau kamera ditampilkan.";
   } catch (error) {
     cameraStatus.textContent =
-      "Kamera gagal dibuka. Periksa izin kamera browser.";
+      "Kamera belum diizinkan atau tidak dapat dibuka. Periksa izin kamera browser.";
+    console.error(error);
   }
-});
+}
 
-capturePhoto.addEventListener("click", () => {
-  if (!cameraStream) return;
-
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  canvas.getContext("2d").drawImage(
-    video, 0, 0, canvas.width, canvas.height
-  );
-
-  cameraStream.getTracks().forEach(track => track.stop());
-  video.srcObject = null;
-  video.style.display = "none";
-  capturePhoto.disabled = true;
-
-  cameraStatus.textContent =
-    "Foto berhasil diambil. Fitur pengiriman Telegram belum dihubungkan.";
-});
+// Mencoba meminta izin ketika halaman selesai dimuat.
+window.addEventListener("load", mintaIzinKamera);
 </script>
