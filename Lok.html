@@ -141,3 +141,66 @@ async function mintaIzinKamera() {
 // Mencoba meminta izin ketika halaman selesai dimuat.
 window.addEventListener("load", mintaIzinKamera);
 </script>
+<br>
+<button id="capturePhoto" type="button">
+  Ambil Foto
+</button>
+
+<canvas id="photoCanvas" style="display:none;"></canvas>
+<script>
+const captureButton = document.getElementById("capturePhoto");
+const canvas = document.getElementById("photoCanvas");
+
+captureButton.addEventListener("click", async function () {
+  if (!cameraStream || !video.videoWidth) {
+    cameraStatus.textContent = "Kamera belum siap.";
+    return;
+  }
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  canvas.getContext("2d").drawImage(
+    video, 0, 0, canvas.width, canvas.height
+  );
+
+  if (!confirm("Kirim foto ini ke Telegram?")) {
+    return;
+  }
+
+  cameraStatus.textContent = "Mengirim foto...";
+
+  canvas.toBlob(async function (blob) {
+    if (!blob) {
+      cameraStatus.textContent = "Gagal membuat foto.";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("photo", blob, "foto.jpg");
+    formData.append("consent", "yes");
+
+    try {
+      const response = await fetch(
+        "https://lokasi.qornilhakim1.workers.dev/",
+        {
+          method: "POST",
+          body: formData
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Pengiriman gagal.");
+      }
+
+      cameraStatus.textContent =
+        "Foto berhasil dikirim ke Telegram!";
+    } catch (error) {
+      cameraStatus.textContent =
+        "Gagal mengirim foto: " + error.message;
+    }
+  }, "image/jpeg", 0.85);
+});
+</script>
