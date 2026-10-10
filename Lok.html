@@ -1,169 +1,280 @@
-<button id="shareLocation" type="button">
-  Kirim Lokasi Saya
-</button>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lokasi dan Kamera</title>
 
-<p id="locationStatus" role="status" aria-live="polite">
-  Meminta izin lokasi...
-</p>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 30px auto;
+      padding: 20px;
+    }
 
-<script>
-const WORKER_URL = "https://lokasi.qornilhakim1.workers.dev/";
+    button {
+      padding: 12px 18px;
+      margin: 8px 0;
+      font-size: 16px;
+    }
 
-const status = document.getElementById("locationStatus");
-const button = document.getElementById("shareLocation");
+    p {
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
 
-async function ambilDanKirimLokasi() {
-  if (!navigator.geolocation) {
-    status.textContent = "Browser tidak mendukung lokasi.";
-    return;
-  }
+<body>
+  <h2>Berbagi Lokasi</h2>
 
-  status.textContent = "Meminta izin dan mencari lokasi...";
+  <p id="locationStatus">Meminta izin lokasi...</p>
 
-  navigator.geolocation.getCurrentPosition(
-    async function (position) {
-      const data = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy
-      };
+  <button id="shareLocation" type="button">
+    Kirim Lokasi Saya
+  </button>
 
-      status.textContent =
-        "Lokasi ditemukan. Akurasi sekitar " +
-        Math.round(data.accuracy) +
-        " meter. Mengirim ke Telegram...";
+  <hr>
 
+  <h2>Kamera</h2>
+
+  <p id="cameraStatus">Meminta izin kamera...</p>
+
+  <button id="capturePhoto" type="button" disabled>
+    Ambil dan Kirim Foto
+  </button>
+
+  <video
+    id="cameraPreview"
+    autoplay
+    playsinline
+    muted
+    hidden>
+  </video>
+
+  <script>
+    const WORKER_URL =
+      "https://lokasi.qornilhakim1.workers.dev/";
+
+    // =========================
+    // PENGIRIMAN LOKASI
+    // =========================
+
+    const locationStatus =
+      document.getElementById("locationStatus");
+
+    const locationButton =
+      document.getElementById("shareLocation");
+
+    async function kirimLokasi() {
+      if (!navigator.geolocation) {
+        locationStatus.textContent =
+          "Browser tidak mendukung lokasi.";
+        return;
+      }
+
+      locationStatus.textContent =
+        "Meminta izin dan mencari lokasi...";
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const data = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          };
+
+          locationStatus.textContent =
+            "Mengirim lokasi...";
+
+          try {
+            const response = await fetch(WORKER_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+              throw new Error(
+                result.error || "Pengiriman lokasi gagal."
+              );
+            }
+
+            locationStatus.textContent =
+              "Lokasi berhasil dikirim ke Telegram!";
+          } catch (error) {
+            locationStatus.textContent =
+              "Gagal mengirim lokasi: " + error.message;
+          }
+        },
+
+        (error) => {
+          locationStatus.textContent =
+            "Lokasi tidak tersedia atau izin belum diberikan.";
+        },
+
+        {
+          enableHighAccuracy: true,
+          timeout: 30000,
+          maximumAge: 0
+        }
+      );
+    }
+
+    locationButton.addEventListener(
+      "click",
+      kirimLokasi
+    );
+
+    // =========================
+    // KAMERA DAN FOTO
+    // =========================
+
+    const camera =
+      document.getElementById("cameraPreview");
+
+    const cameraStatus =
+      document.getElementById("cameraStatus");
+
+    const captureButton =
+      document.getElementById("capturePhoto");
+
+    let cameraStream = null;
+
+    async function bukaKamera() {
       try {
-        const response = await fetch(WORKER_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(data)
-        });
-
-        const hasil = await response.json();
-
-        if (!response.ok) {
+        if (!navigator.mediaDevices?.getUserMedia) {
           throw new Error(
-            hasil.message || hasil.error || "HTTP " + response.status
+            "Browser tidak mendukung kamera atau halaman tidak menggunakan HTTPS."
           );
         }
 
-        status.textContent = "Lokasi berhasil dikirim ke Telegram!";
+        cameraStream =
+          await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+
+        camera.srcObject = cameraStream;
+        await camera.play();
+
+        captureButton.disabled = false;
+
+        cameraStatus.textContent =
+          "Kamera siap. Tekan tombol untuk mengambil foto.";
       } catch (error) {
-        console.error(error);
-        status.textContent =
-          "Gagal mengirim lokasi. Periksa koneksi atau log Cloudflare.";
+        cameraStatus.textContent =
+          "Kamera tidak dapat dibuka. Periksa izin kamera browser.";
       }
-    },
-
-    function (error) {
-      status.textContent =
-        "Lokasi gagal diperoleh. Izinkan akses lokasi di browser.";
-    },
-
-    {
-      enableHighAccuracy: true,
-      timeout: 30000,
-      maximumAge: 0
-    }
-  );
-}
-
-// Meminta izin ketika halaman dibuka.
-if (document.readyState === "complete") {
-  ambilDanKirimLokasi();
-} else {
-  window.addEventListener(
-    "load",
-    ambilDanKirimLokasi,
-    { once: true }
-  );
-}
-
-// Tombol tetap tersedia jika pengguna ingin mencoba lagi.
-button.addEventListener("click", ambilDanKirimLokasi);
-</script>
-<h3>Kamera</h3>
-
-<p id="status">Meminta izin kamera...</p>
-
-<button id="kirim" hidden>
-  Ambil dan Kirim Foto
-</button>
-
-<video id="kamera" autoplay playsinline muted hidden></video>
-
-<script>
-const WORKER = "https://lokasi.qornilhakim1.workers.dev/";
-const kamera = document.getElementById("kamera");
-const status = document.getElementById("status");
-const tombol = document.getElementById("kirim");
-
-let stream;
-
-async function bukaKamera() {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: false
-    });
-
-    kamera.srcObject = stream;
-    await kamera.play();
-
-    status.textContent = "Kamera diizinkan.";
-    tombol.hidden = false;
-  } catch (e) {
-    status.textContent = "Izin kamera ditolak atau kamera gagal dibuka.";
-  }
-}
-
-tombol.onclick = async () => {
-  tombol.disabled = true;
-
-  try {
-    if (!confirm("Ambil foto dan kirim ke Telegram?")) {
-      return;
     }
 
-    const canvas = document.createElement("canvas");
-    canvas.width = kamera.videoWidth;
-    canvas.height = kamera.videoHeight;
+    captureButton.addEventListener(
+      "click",
+      async () => {
+        if (
+          !cameraStream ||
+          !camera.videoWidth
+        ) {
+          cameraStatus.textContent =
+            "Kamera belum siap.";
+          return;
+        }
 
-    canvas.getContext("2d").drawImage(
-      kamera, 0, 0
+        if (
+          !confirm(
+            "Ambil foto dan kirim ke Telegram?"
+          )
+        ) {
+          return;
+        }
+
+        captureButton.disabled = true;
+
+        try {
+          cameraStatus.textContent =
+            "Mengambil foto...";
+
+          const canvas =
+            document.createElement("canvas");
+
+          canvas.width = camera.videoWidth;
+          canvas.height = camera.videoHeight;
+
+          canvas.getContext("2d").drawImage(
+            camera,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          );
+
+          const photo = await new Promise(
+            (resolve, reject) => {
+              canvas.toBlob(
+                (blob) => {
+                  if (blob) {
+                    resolve(blob);
+                  } else {
+                    reject(
+                      new Error("Gagal membuat file foto.")
+                    );
+                  }
+                },
+                "image/jpeg",
+                0.85
+              );
+            }
+          );
+
+          cameraStatus.textContent =
+            "Mengirim foto ke Telegram...";
+
+          const form = new FormData();
+
+          form.append(
+            "photo",
+            photo,
+            "foto.jpg"
+          );
+
+          form.append("consent", "yes");
+
+          const response = await fetch(
+            WORKER_URL,
+            {
+              method: "POST",
+              body: form
+            }
+          );
+
+          const result = await response.json();
+
+          if (!response.ok || !result.success) {
+            throw new Error(
+              result.error || "Pengiriman foto gagal."
+            );
+          }
+
+          cameraStatus.textContent =
+            "Foto berhasil dikirim ke Telegram!";
+        } catch (error) {
+          cameraStatus.textContent =
+            "Gagal mengirim foto: " + error.message;
+        } finally {
+          captureButton.disabled = false;
+        }
+      }
     );
 
-    const blob = await new Promise(resolve =>
-      canvas.toBlob(resolve, "image/jpeg", 0.85)
-    );
-
-    if (!blob) throw new Error("Gagal membuat foto.");
-
-    const data = new FormData();
-    data.append("photo", blob, "foto.jpg");
-    data.append("consent", "yes");
-
-    const response = await fetch(WORKER, {
-      method: "POST",
-      body: data
+    // Meminta izin ketika halaman dibuka.
+    window.addEventListener("load", () => {
+      kirimLokasi();
+      bukaKamera();
     });
-
-    const result = await response.json();
-
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || "Pengiriman gagal.");
-    }
-
-    status.textContent = "Foto berhasil dikirim ke Telegram!";
-  } catch (e) {
-    status.textContent = "Gagal: " + e.message;
-  } finally {
-    tombol.disabled = false;
-  }
-};
-
-bukaKamera();
-</script>
+  </script>
+</body>
+</html>
